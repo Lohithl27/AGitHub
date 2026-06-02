@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agithub - Learn Git & GitHub Collaboratively</title>
+    <!-- Modern Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=1.1">
+</head>
+<body class="modern-bg">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-left">
+            <svg class="header-logo" viewBox="0 0 24 24" width="32" height="32">
+                <circle cx="12" cy="12" r="10" fill="none" stroke="var(--primary)" stroke-width="2"/>
+                <path d="M12 6L7 17h10L12 6zm-2 8h4" fill="none" stroke="var(--primary)" stroke-width="1.5" stroke-linejoin="round"/>
+                <circle cx="12" cy="6" r="1.5" fill="var(--accent)"/>
+                <circle cx="7" cy="17" r="1.5" fill="var(--accent)"/>
+                <circle cx="17" cy="17" r="1.5" fill="var(--accent)"/>
+            </svg>
+            <span class="logo-title"><span class="text-gradient">A</span>github</span>
+        </div>
+        
+        <nav class="header-nav hidden" id="main-nav-links">
+            <button class="nav-link active" data-tab="dashboard-screen">
+                <span class="icon">📊</span> Dashboard
+            </button>
+            <button class="nav-link" data-tab="learning-screen">
+                <span class="icon">📚</span> Learning Hub
+            </button>
+            <button class="nav-link" data-tab="reference-screen">
+                <span class="icon">💻</span> Git Commands
+            </button>
+            <button class="nav-link" data-tab="profile-screen">
+                <span class="icon">👤</span> Operator Profile
+            </button>
+        </nav>
+
+        <div class="header-right" id="header-user-badge">
+            <!-- Dynamic operator status -->
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+        <!-- 1. AUTH SCREEN -->
+        <section id="auth-screen" class="active-screen">
+            <div class="auth-wrapper">
+                <div class="auth-card">
+                    <div class="auth-brand">
+                        <div class="brand-avatar">🔑</div>
+                        <h2>Learn Git with Agithub</h2>
+                        <p>Sign in to track your version control course progress</p>
+                    </div>
+
+                    <!-- Social Logins -->
+                    <div class="social-login-container">
+                        <button type="button" class="btn-social google" onclick="handleOAuthLogin('google')">
+                            <svg class="social-icon" viewBox="0 0 24 24" width="18" height="18">
+                                <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.555 0-6.437-2.882-6.437-6.437 0-3.555 2.882-6.437 6.437-6.437 1.547 0 2.957.55 4.07 1.458l3.11-3.11C19.167 2.148 15.992 1 12.24 1 6.046 1 1 6.046 1 12.24s5.046 11.24 11.24 11.24c5.897 0 10.87-4.148 10.87-11.24 0-.743-.072-1.423-.195-1.955H12.24z"/>
+                            </svg>
+                            Continue with Google
+                        </button>
+                        <button type="button" class="btn-social github" onclick="handleOAuthLogin('github')">
+                            <svg class="social-icon" viewBox="0 0 24 24" width="18" height="18">
+                                <path fill="#FFF" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.137 20.162 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+                            </svg>
+                            Continue with GitHub
+                        </button>
+                    </div>
+
+                    <div class="auth-divider">
+                        <span>or manually enter credentials</span>
+                    </div>
+
+                    <div class="auth-toggle-buttons">
+                        <button class="auth-toggle-btn active" id="btn-toggle-login">SIGN IN</button>
+                        <button class="auth-toggle-btn" id="btn-toggle-register">CREATE ACCOUNT</button>
+                    </div>
+
+                    <!-- Errors -->
+                    <div class="auth-error-box hidden" id="auth-error"></div>
+
+                    <!-- Login Form -->
+                    <form id="login-form" class="auth-form-body">
+                        <div class="form-control">
+                            <label for="login-username">Gmail / Username</label>
+                            <input type="text" id="login-username" placeholder="e.g. yourname@gmail.com" required>
+                        </div>
+                        <div class="form-control">
+                            <label for="login-password">Access Key / Password</label>
+                            <input type="password" id="login-password" placeholder="••••••••" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">LOAD WORKSPACE PROGRESS</button>
+                    </form>
+
+                    <!-- Signup Form -->
+                    <form id="register-form" class="auth-form-body hidden">
+                        <div class="form-control">
+                            <label for="reg-username">Student Username</label>
+                            <input type="text" id="reg-username" placeholder="e.g., alex_dev" required>
+                        </div>
+                        <div class="form-control">
+                            <label for="reg-email">Gmail Address</label>
+                            <input type="email" id="reg-email" placeholder="e.g., alex@gmail.com" required>
+                        </div>
+                        <div class="form-control">
+                            <label for="reg-password">Access Key / Password (Min. 6 chars)</label>
+                            <input type="password" id="reg-password" placeholder="••••••••" required>
+                        </div>
+                        <button type="submit" class="btn btn-accent btn-block">REGISTER STUDENT</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. DASHBOARD SCREEN -->
+        <section id="dashboard-screen" class="hidden-screen">
+            <div class="dashboard-layout">
+                <!-- Side Summary Card -->
+                <div class="dashboard-side">
+                    <div class="card operator-card">
+                        <div class="operator-header">
+                            <div class="operator-avatar" id="profile-avatar-char">🎓</div>
+                            <h3 id="profile-operator-name">STUDENT NAME</h3>
+                            <span class="rank-tag" id="profile-operator-rank">Git Apprentice</span>
+                        </div>
+                        
+                        <div class="operator-stats">
+                            <div class="stat-box">
+                                <span class="label">LEVEL</span>
+                                <span class="val" id="profile-level">1</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="label">AGITHUB XP</span>
+                                <span class="val text-primary" id="profile-xp">0 XP</span>
+                            </div>
+                        </div>
+
+                        <div class="completion-box">
+                            <div class="completion-header">
+                                <span>Academy Syllabus</span>
+                                <span id="syllabus-percent">0%</span>
+                            </div>
+                            <div class="completion-bar">
+                                <div class="completion-fill" id="syllabus-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Certificate Card -->
+                    <div class="card cert-card locked" id="certificate-widget">
+                        <div class="cert-icon-container">🏆</div>
+                        <h4>Academy Certificate</h4>
+                        <p id="cert-status-text">Complete all 7 Git challenges to unlock your graduation credentials.</p>
+                        <button class="btn btn-primary btn-block" id="btn-open-cert" disabled>CLAIM GRADUATION CERTIFICATE</button>
+                    </div>
+                </div>
+
+                <!-- Main Syllabus Course Outline -->
+                <div class="dashboard-main">
+                    <div class="main-header-title">
+                        <h2>Git Challenges</h2>
+                        <p>Complete the 7 essential Git challenges to master version control & GitHub workflows.</p>
+                    </div>
+                    
+                    <div class="challenges-list" id="challenges-grid">
+                        <!-- Challenge rows dynamically inserted -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. LEARNING HUB SCREEN -->
+        <section id="learning-screen" class="hidden-screen">
+            <div class="learning-header">
+                <h2>Learning Resources</h2>
+                <p>Watch YouTube video tutorials and read clear cheat sheets for each topic inside the lab before tackling the challenges.</p>
+            </div>
+
+            <!-- Split learning space -->
+            <div class="learning-workspace">
+                <!-- Left Menu of Topics -->
+                <div class="topics-menu" id="topics-navigation-menu">
+                    <!-- Topics will load dynamically -->
+                </div>
+
+                <!-- Right Dynamic Player & Info Panel -->
+                <div class="topic-detail-container" id="active-topic-panel">
+                    <!-- Topic detail dynamically rendered -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. PROFILE SCREEN -->
+        <section id="profile-screen" class="hidden-screen">
+            <div class="profile-layout-container">
+                <div class="card profile-settings-card">
+                    <div class="card-title">
+                        <h3>Profile Settings</h3>
+                        <p>Update your Student Username or email credentials</p>
+                    </div>
+                    
+                    <div class="profile-avatar-select">
+                        <label>Choose Student Avatar</label>
+                        <div class="avatar-grid" id="avatar-grid-selector">
+                            <div class="avatar-option active">🎓</div>
+                            <div class="avatar-option">💻</div>
+                            <div class="avatar-option">🛠️</div>
+                            <div class="avatar-option">🐙</div>
+                            <div class="avatar-option">🚀</div>
+                            <div class="avatar-option">🔑</div>
+                            <div class="avatar-option">🏆</div>
+                            <div class="avatar-option">🌟</div>
+                        </div>
+                    </div>
+
+                    <form id="profile-update-form">
+                        <div class="form-control">
+                            <label for="profile-username-input">Student Username</label>
+                            <input type="text" id="profile-username-input" required>
+                        </div>
+                        <div class="form-control">
+                            <label for="profile-email-input">Contact Email</label>
+                            <input type="email" id="profile-email-input" readonly>
+                        </div>
+                        <button type="submit" class="btn btn-primary">SAVE CHANGES</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. GIT REFERENCE SCREEN -->
+        <section id="reference-screen" class="hidden-screen">
+            <div class="reference-container">
+                <div class="reference-header">
+                    <h2>Git OS Command Reference</h2>
+                    <p>Complete workspace guide on installing, configuring, and operating Git across different operating systems.</p>
+                </div>
+
+                <div class="reference-os-toggle">
+                    <button class="os-toggle-btn active" id="btn-os-windows" onclick="switchOSReference('windows')">
+                        <span class="os-icon">🪟</span> Windows
+                    </button>
+                    <button class="os-toggle-btn" id="btn-os-macos" onclick="switchOSReference('macos')">
+                        <span class="os-icon">🍎</span> macOS
+                    </button>
+                    <button class="os-toggle-btn" id="btn-os-linux" onclick="switchOSReference('linux')">
+                        <span class="os-icon">🐧</span> Linux
+                    </button>
+                    <button class="os-toggle-btn" id="btn-os-cheatcodes" onclick="switchOSReference('cheatcodes')">
+                        <span class="os-icon">📋</span> Git Cheatcodes
+                    </button>
+                </div>
+
+                <div class="reference-search-row">
+                    <input type="text" id="ref-search-input" placeholder="🔍 Search commands (e.g. clone, checkout, push)..." oninput="filterReferenceCommands()">
+                </div>
+
+                <div id="reference-os-details">
+                    <!-- Loaded dynamically via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. CHALLENGE WORKSPACE SCREEN -->
+        <section id="workspace-screen" class="hidden-screen">
+            <div class="workspace-layout">
+                <!-- Left Control Panel (Instructions + CAD view) -->
+                <div class="workspace-sidebar">
+                    <div class="sidebar-header">
+                        <button class="btn-back" id="workspace-back-btn">← Back to Dashboard</button>
+                        <div class="sidebar-title">
+                            <span class="badge-tag" id="active-challenge-tag">CHALLENGE 1</span>
+                            <h3 id="active-challenge-title">Bootup Chassis</h3>
+                        </div>
+                    </div>
+                    
+                    <!-- SVG CAD Visualization -->
+                    <div class="cad-display-panel">
+                        <div class="cad-overlay-grid"></div>
+                        <div class="cad-viewport" id="active-cad-viewer">
+                            <!-- Reactive SVGs -->
+                        </div>
+                    </div>
+
+                    <!-- Steps description -->
+                    <div class="briefing-panel-content">
+                        <div class="steps-progress" id="active-step-markers">
+                            <!-- Step dots -->
+                        </div>
+                        <div class="step-card-text" id="active-step-instruction">
+                            <!-- Steps instructions -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Terminal Console -->
+                <div class="workspace-console">
+                    <div class="console-header">
+                        <div class="console-title">🖥️ Interactive Telemetry Console</div>
+                        <button class="btn btn-small btn-secondary" id="workspace-reset-btn">Reset Workspace</button>
+                    </div>
+                    <div class="console-body">
+                        <div class="console-terminal-lines" id="workspace-terminal-history">
+                            <!-- Command log lines -->
+                        </div>
+                        <div class="console-input-row">
+                            <span class="prompt">operator@robo-courier:~$</span>
+                            <input type="text" id="workspace-terminal-input" autocomplete="off" autofocus>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal 1: Reward Overlay -->
+    <div id="reward-overlay" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="success-icon-wrap">✓</div>
+            <h2>Challenge Complete</h2>
+            <p class="challenge-name-text" id="modal-reward-challenge-name">CHASSIS SETUP SUCCESSFUL</p>
+            
+            <div class="reward-xp-card">
+                <span class="xp-val" id="modal-reward-xp-val">+100</span>
+                <span class="xp-lbl">Agithub Course XP</span>
+            </div>
+
+            <div class="badge-award-card hidden" id="modal-badge-award-section">
+                <div class="badge-icon" id="modal-badge-award-icon">🌱</div>
+                <div class="badge-details">
+                    <span class="tag">New Achievement Certificate</span>
+                    <span class="name" id="modal-badge-award-name">System Bootstrapper</span>
+                </div>
+            </div>
+
+            <div class="modal-buttons-row">
+                <button class="btn btn-secondary" id="modal-reward-claim-btn">RETURN TO BENCH</button>
+                <button class="btn btn-primary" id="modal-reward-next-btn">NEXT CHALLENGE →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Certificate View Overlay (Printable Layout) -->
+    <div id="cert-overlay" class="modal-overlay hidden">
+        <div class="cert-modal-card">
+            <div class="cert-actions no-print">
+                <button class="btn btn-secondary" id="cert-modal-close">Close</button>
+                <button class="btn btn-primary" onclick="window.print()">🖨️ Print Certificate</button>
+            </div>
+            
+            <!-- High quality certificate template -->
+            <div class="certificate-printable" id="printable-certificate-body">
+                <div class="cert-border-outer">
+                    <div class="cert-border-inner">
+                        <div class="cert-watermark">A</div>
+                        <div class="cert-header">
+                            <span class="cert-subtitle">AGITHUB ACADEMY</span>
+                            <h1 class="cert-title">GRADUATION CERTIFICATE</h1>
+                        </div>
+                        
+                        <div class="cert-body">
+                            <p class="cert-text-lead">This is proudly awarded to</p>
+                            <h2 class="cert-recipient-name" id="cert-name-display">STUDENT NAME</h2>
+                            <p class="cert-text-body">for successfully completing the entire Git curriculum and passing all 7 interactive version control challenges on branching, merging, and remote collaboration.</p>
+                        </div>
+                        
+                        <div class="cert-footer">
+                            <div class="cert-signature-block">
+                                <span class="line"></span>
+                                <span class="label">Course Coordinator</span>
+                            </div>
+                            
+                            <div class="cert-seal">
+                                <div class="seal-inner">
+                                    <span>OFFICIAL</span>
+                                    <span>SEAL</span>
+                                </div>
+                            </div>
+                            
+                            <div class="cert-signature-block">
+                                <span class="line"></span>
+                                <span class="label">Date Verified</span>
+                            </div>
+                        </div>
+                        
+                        <div class="cert-validation-code">
+                            System Verification ID: <span id="cert-verification-id">GRA-998811A</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=1.1"></script>
+</body>
+</html>

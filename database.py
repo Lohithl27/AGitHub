@@ -1,22 +1,44 @@
-import sqlite3
+"""
+database.py — Supabase PostgreSQL backend + Google Sheets event logger
+All credentials come from environment variables (set in Vercel dashboard).
+"""
+import os
 import json
 import hashlib
 import secrets
+import datetime
 
-DB_FILE = 'data.db'
+import psycopg2
+import psycopg2.extras
+
+# ── Supabase PostgreSQL connection ────────────────────────────────────────────
+# Set DATABASE_URL in Vercel env vars:
+#   postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
+    if not DATABASE_URL:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is not set. "
+            "Add it in Vercel → Project Settings → Environment Variables."
+        )
+    # Supabase requires SSL — append sslmode=require if not already present
+    url = DATABASE_URL
+    if 'sslmode' not in url:
+        sep = '&' if '?' in url else '?'
+        url = url + sep + 'sslmode=require'
+    conn = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
     return conn
 
+
 def init_db():
+    """Create tables if they don't exist. Safe to call on every cold start."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    # Create users table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
@@ -27,30 +49,28 @@ def init_db():
         )
     ''')
     conn.commit()
+    cursor.close()
     conn.close()
+
+
+# ── Password helpers ──────────────────────────────────────────────────────────
 
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
-    key = hashlib.pbkdf2_hmac(
-        'sha256',
-        password.encode('utf-8'),
-        salt.encode('utf-8'),
-        100000
-    )
+    key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100_000)
     return f"{salt}${key.hex()}"
+
 
 def verify_password(password: str, stored_hash: str) -> bool:
     try:
         salt, stored_hex = stored_hash.split('$')
-        key = hashlib.pbkdf2_hmac(
-            'sha256',
-            password.encode('utf-8'),
-            salt.encode('utf-8'),
-            100000
-        )
+        key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100_000)
         return key.hex() == stored_hex
     except Exception:
         return False
+
+
+# ── User operations ───────────────────────────────────────────────────────────
 
 def register_user(username, email, password):
     conn = get_db_connection()
@@ -58,65 +78,133 @@ def register_user(username, email, password):
     p_hash = hash_password(password)
     try:
         cursor.execute(
-            'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
+            'INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s) RETURNING id',
             (username, email, p_hash)
         )
+        user_id = cursor.fetchone()['id']
         conn.commit()
-        user_id = cursor.lastrowid
+        cursor.close()
         conn.close()
+        # Log new registration to Google Sheets
+        log_to_sheets('REGISTRATION', username, email)
         return user_id, None
-    except sqlite3.IntegrityError as e:
+    except psycopg2.errors.UniqueViolation as e:
+        conn.rollback()
+        cursor.close()
         conn.close()
-        # Determine if email or username is taken
-        err_msg = str(e).lower()
-        if 'email' in err_msg:
+        msg = str(e)
+        if 'email' in msg:
             return None, "Email address already registered."
-        elif 'username' in err_msg:
-            return None, "Username already taken."
-        return None, "Registration failed: User credentials conflict."
+        return None, "Username already taken."
     except Exception as e:
+        conn.rollback()
+        cursor.close()
         conn.close()
         return None, str(e)
+
 
 def authenticate_user(username_or_email, password):
     conn = get_db_connection()
     cursor = conn.cursor()
-    # Query user by username or email
     cursor.execute(
-        'SELECT * FROM users WHERE username = ? OR email = ?',
+        'SELECT * FROM users WHERE username = %s OR email = %s',
         (username_or_email, username_or_email)
     )
     user = cursor.fetchone()
+    cursor.close()
     conn.close()
     if user and verify_password(password, user['password_hash']):
-        return dict(user)
+        user_dict = dict(user)
+        # Log successful login to Google Sheets
+        log_to_sheets('LOGIN', user_dict['username'], user_dict['email'])
+        return user_dict
     return None
+
 
 def get_user_profile(user_id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id, username, email, level, xp, badges, progress FROM users WHERE id = ?', (user_id,))
+    cursor.execute(
+        'SELECT id, username, email, level, xp, badges, progress FROM users WHERE id = %s',
+        (user_id,)
+    )
     user = cursor.fetchone()
+    cursor.close()
     conn.close()
     if user:
         user_dict = dict(user)
-        # Parse JSON fields
-        user_dict['badges'] = json.loads(user_dict['badges'])
-        user_dict['progress'] = json.loads(user_dict['progress'])
+        # Parse JSON fields stored as text
+        if isinstance(user_dict['badges'], str):
+            user_dict['badges'] = json.loads(user_dict['badges'])
+        if isinstance(user_dict['progress'], str):
+            user_dict['progress'] = json.loads(user_dict['progress'])
         return user_dict
     return None
+
 
 def update_user_progress(user_id, level, xp, badges, progress):
     conn = get_db_connection()
     cursor = conn.cursor()
-    # Convert lists/dicts to JSON strings
     badges_str = json.dumps(badges)
     progress_str = json.dumps(progress)
     cursor.execute('''
-        UPDATE users
-        SET level = ?, xp = ?, badges = ?, progress = ?
-        WHERE id = ?
+        UPDATE users SET level = %s, xp = %s, badges = %s, progress = %s
+        WHERE id = %s
     ''', (level, xp, badges_str, progress_str, user_id))
     conn.commit()
+
+    # Check if all 7 challenges completed — log certificate claim
+    progress_dict = progress if isinstance(progress, dict) else json.loads(progress)
+    completed = sum(1 for v in progress_dict.values() if v == 'completed')
+    if completed >= 7:
+        cursor.execute('SELECT username, email FROM users WHERE id = %s', (user_id,))
+        u = cursor.fetchone()
+        if u:
+            cert_id = f"AGIT-{user_id}{xp}A"
+            log_to_sheets('CERTIFICATE', u['username'], u['email'], cert_id)
+
+    cursor.close()
     conn.close()
     return True
+
+
+# ── Google Sheets Logger ──────────────────────────────────────────────────────
+
+def log_to_sheets(event_type: str, username: str, email: str, extra: str = ''):
+    """
+    Appends a row to the Google Sheet.
+    Required env vars:
+      SHEETS_SPREADSHEET_ID  — the ID from your Google Sheet URL
+      GOOGLE_SERVICE_ACCOUNT — JSON string of the service account key file
+    """
+    spreadsheet_id = os.environ.get('SHEETS_SPREADSHEET_ID', '')
+    service_account_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT', '')
+
+    if not spreadsheet_id or not service_account_json:
+        # Silently skip if not configured (local dev)
+        return
+
+    try:
+        import google.auth
+        from google.oauth2.service_account import Credentials
+        from googleapiclient.discovery import build
+
+        creds_info = json.loads(service_account_json)
+        scopes = ['https://www.googleapis.com/auth/spreadsheets']
+        creds = Credentials.from_service_account_info(creds_info, scopes=scopes)
+        service = build('sheets', 'v4', credentials=creds, cache_discovery=False)
+
+        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+        row = [[now, event_type, username, email, extra]]
+
+        service.spreadsheets().values().append(
+            spreadsheetId=spreadsheet_id,
+            range='Sheet1!A:E',
+            valueInputOption='RAW',
+            insertDataOption='INSERT_ROWS',
+            body={'values': row}
+        ).execute()
+
+    except Exception as ex:
+        # Never crash the app due to logging failures
+        print(f"[Sheets Logger] Failed to log event: {ex}")

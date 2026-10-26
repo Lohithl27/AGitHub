@@ -181,7 +181,10 @@ def log_to_sheets(event_type: str, username: str, email: str, extra: str = ''):
     service_account_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT', '')
 
     if not spreadsheet_id or not service_account_json:
-        # Silently skip if not configured (local dev)
+        # Not configured — skip, but say so in the logs so it is not a mystery
+        missing = [n for n, v in (('SHEETS_SPREADSHEET_ID', spreadsheet_id),
+                                  ('GOOGLE_SERVICE_ACCOUNT', service_account_json)) if not v]
+        print(f"[Sheets Logger] Skipped {event_type}: missing env var(s): {', '.join(missing)}")
         return
 
     try:

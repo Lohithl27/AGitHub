@@ -1910,3 +1910,103 @@ pre code {
     cursor: pointer;
 }
 
+
+/* ============================================================
+   Git Commands page — aligned, wrapping table layout
+   ============================================================ */
+.commands-table-container {
+    overflow-x: auto;
+}
+
+.commands-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 640px;
+}
+
+.commands-table col.c-cmd { width: 34%; }
+.commands-table col.c-desc { width: 50%; }
+.commands-table col.c-action { width: 16%; }
+
+.commands-table th,
+.commands-table td {
+    padding: 14px 20px;
+    vertical-align: top;
+}
+
+.commands-table th:last-child,
+.commands-table td.col-action {
+    text-align: right;
+}
+
+/* Let long commands wrap instead of stretching the table */
+.commands-table code {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    display: inline-block;
+    line-height: 1.5;
+}
+
+.commands-table .cmd-desc {
+    display: block;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+/* Example commands shown as tidy chips under the description */
+.cmd-examples {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.cmd-examples code {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    max-width: 100%;
+}
+
+/* Category heading rows */
+.commands-table tr.category-row td {
+    background: rgba(58, 134, 255, 0.07);
+    color: var(--primary);
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 0.78rem;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+}
+
+.commands-table .btn-copy-cmd {
+    white-space: nowrap;
+}
+
+/* Learning hub video fallback link */
+.video-fallback {
+    margin: -16px 0 24px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.video-fallback a {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+    .reference-os-toggle {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+    .os-toggle-btn {
+        flex: 1 1 40%;
+        justify-content: center;
+    }
+}

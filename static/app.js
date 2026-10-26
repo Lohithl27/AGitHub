@@ -32,7 +32,7 @@ const CHALLENGES = [
         desc: "Initialize a local repository, check status, and understand essential git tracking concepts.",
         xp: 100,
         badge: { name: "Foundations Badge", icon: "🌱" },
-        ytVideoId: "apGV9Ad7XY0",
+        ytVideoId: "hwP7WQkmECE",
         overview: "Git is a distributed version control system that records changes to your files over time. In this module, we cover git initialization, checking status, viewing logs, and cloning remote repositories. The <code>.git</code> folder is the heart of any Git repository; it contains all configuration settings and version history metadata.",
         commands: [
             { cmd: "git init", usage: "Initialize a local Git repository in the current directory." },
@@ -112,7 +112,7 @@ const CHALLENGES = [
         desc: "Save modifications by staging files and committing them with informative labels.",
         xp: 120,
         badge: { name: "Commits Badge", icon: "⚙️" },
-        ytVideoId: "8oRjP8VJ2Hs",
+        ytVideoId: "8JJ101D3knE",
         overview: "Saving work in Git is a two-step process: staging modifications using <code>git add</code> and committing them permanently via <code>git commit</code>. Staging acts as a conveyor belt (index) where you prepare exactly which changes you want to capture before sealing them in the repository.",
         commands: [
             { cmd: "git add .", usage: "Stage all current modifications and untracked files in active directory." },
@@ -190,7 +190,7 @@ const CHALLENGES = [
         desc: "Create and switch branches to build features in isolated environments.",
         xp: 130,
         badge: { name: "Branching Badge", icon: "🔌" },
-        ytVideoId: "FyAAI18h9x8",
+        ytVideoId: "SWYqp7iY_Tc",
         overview: "Branching is Git's superpower, allowing developers to split off from the main line of development to build features in isolation without disrupting the stable master codebase. <code>HEAD</code> is a special reference pointer indicating the current active commit and branch.",
         commands: [
             { cmd: "git branch <name>", usage: "Weld a new isolated branch under specified name." },
@@ -263,7 +263,7 @@ const CHALLENGES = [
         desc: "Integrate isolated modifications from one branch into another branch via merge or rebase.",
         xp: 140,
         badge: { name: "Merging Badge", icon: "📡" },
-        ytVideoId: "zOnS8Q156T0",
+        ytVideoId: "dJ2bklDBpVw",
         overview: "Merging joins development histories together. A 3-way merge creates a merge commit preserving history. Rebasing reapplies commits directly on top of another base tip, producing a clean linear history.",
         commands: [
             { cmd: "git merge <branch>", usage: "Integrate modifications from target branch into active branch." },
@@ -389,7 +389,7 @@ const CHALLENGES = [
         desc: "Master collaborative pull request reviews and standard git conventions.",
         xp: 160,
         badge: { name: "PR Badge", icon: "🚀" },
-        ytVideoId: "c-Zlh7d5j1Y",
+        ytVideoId: "tRZGeaHPoaw",
         overview: "A Pull Request (PR) tells team members about changes you have pushed to a branch in a repository on GitHub. Once a PR is opened, you can discuss and review potential modifications and add follow-up commits before changes are merged.",
         commands: [
             { cmd: "git checkout -b <branch>", usage: "Create a feature branch and switch to it immediately." },
@@ -451,7 +451,7 @@ const CHALLENGES = [
         desc: "Resolve code merge conflicts manually and master deep git diagnostics.",
         xp: 180,
         badge: { name: "Graduation Badge", icon: "🏆" },
-        ytVideoId: "H5GJuap1Y4c",
+        ytVideoId: "vw-2U0u7Ni4",
         overview: "Merge conflicts occur when changes are made to the same line of a file in different branches. You must manually resolve conflict markers <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code>, and <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> before staging and finalizing.",
         commands: [
             { cmd: "git status", usage: "Locate all conflicting files marked with 'both modified'." },
@@ -542,6 +542,7 @@ async function checkSession() {
         } else {
             showScreen('auth-screen');
             document.getElementById('main-nav-links').classList.add('hidden');
+            showOAuthErrorFromUrl();
         }
     } catch (e) {
         showScreen('auth-screen');
@@ -698,32 +699,26 @@ function setupAuthListeners() {
     });
 }
 
-async function handleOAuthLogin(provider) {
-    const mockEmail = provider === 'google' ? 'google_student@gmail.com' : 'github_student@gmail.com';
-    const mockUsername = provider === 'google' ? 'GoogleStudent' : 'GitHubStudent';
-    const errBox = document.getElementById('auth-error');
-    errBox.classList.add('hidden');
-    
-    try {
-        const res = await fetch('/api/oauth-login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ provider, email: mockEmail, username: mockUsername })
-        });
-        const data = await res.json();
-        if (data.success) {
-            currentUser = data.user;
-            showDashboard();
-            updateHeaderStatus();
-            document.getElementById('main-nav-links').classList.remove('hidden');
-        } else {
-            errBox.textContent = data.message || "OAuth authentication failed.";
-            errBox.classList.remove('hidden');
-        }
-    } catch (e) {
-        errBox.textContent = "OAuth server communication failure.";
-        errBox.classList.remove('hidden');
-    }
+function handleOAuthLogin(provider) {
+    // Real sign-in: the server sends the visitor to Google / GitHub and
+    // creates the account from the verified profile that comes back.
+    window.location.href = `/api/oauth/${encodeURIComponent(provider)}/start`;
+}
+
+function showOAuthErrorFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('oauth_error');
+    if (!code) return;
+    const provider = params.get('provider') || 'that provider';
+    const messages = {
+        not_configured: `Sign-in with ${provider} is not set up yet on this site. Please use email and password.`,
+        cancelled: `Sign-in with ${provider} was cancelled.`,
+        no_email: `${provider} did not share a verified email address, so we could not sign you in.`,
+        failed: `Sign-in with ${provider} failed. Please try again.`
+    };
+    showAuthError(messages[code] || messages.failed);
+    // Clean the address bar so a refresh does not repeat the message
+    window.history.replaceState({}, document.title, window.location.pathname);
 }
 
 function showAuthError(msg) {
@@ -968,8 +963,9 @@ function renderActiveLearningTopic(topic) {
 
             <!-- YouTube Iframe Responsive player -->
             <div class="video-wrapper">
-                <iframe src="https://www.youtube.com/embed/${topic.ytVideoId}" allowfullscreen></iframe>
+                <iframe src="https://www.youtube-nocookie.com/embed/${topic.ytVideoId}" title="${topic.title} video" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
             </div>
+            <p class="video-fallback">Video not playing? <a href="https://www.youtube.com/watch?v=${topic.ytVideoId}" target="_blank" rel="noopener noreferrer">Watch it on YouTube ↗</a></p>
 
             <div class="learning-syllabus-text">
                 <p>${topic.overview}</p>
@@ -2014,12 +2010,29 @@ function switchOSReference(os) {
     renderOSReference(os);
 }
 
+function escapeHTML(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Splits "Some text (Examples: git a, git b)" into the text and a list of example commands
+function splitCommandDescription(desc) {
+    const m = String(desc).match(/^(.*?)\s*\(Examples?:\s*([\s\S]*)\)\s*$/);
+    if (!m) return { text: desc, examples: [] };
+    const examples = m[2].split(/,\s*(?=git\s)/).map(e => e.trim()).filter(Boolean);
+    return { text: m[1].trim(), examples };
+}
+
 function renderOSReference(os) {
     const container = document.getElementById('reference-os-details');
     const osData = OS_COMMANDS[os];
     const searchVal = document.getElementById('ref-search-input').value.trim().toLowerCase();
 
-    // Build installation steps
+    // Build installation steps (these strings contain trusted, intentional HTML)
     let installHTML = '';
     osData.install.forEach((step, idx) => {
         installHTML += `
@@ -2031,23 +2044,40 @@ function renderOSReference(os) {
     });
 
     // Filter commands based on search
-    const filtered = osData.commands.filter(c => 
-        c.cmd.toLowerCase().includes(searchVal) || 
-        c.desc.toLowerCase().includes(searchVal) || 
+    const filtered = osData.commands.filter(c =>
+        c.cmd.toLowerCase().includes(searchVal) ||
+        c.desc.toLowerCase().includes(searchVal) ||
         c.category.toLowerCase().includes(searchVal)
     );
 
-    // Build table rows
+    // Build rows, with a full-width heading row each time the category changes
     let tableRowsHTML = '';
     if (filtered.length > 0) {
-        filtered.forEach((c, idx) => {
+        let lastCategory = null;
+        filtered.forEach(c => {
+            if (c.category !== lastCategory) {
+                lastCategory = c.category;
+                tableRowsHTML += `
+                    <tr class="category-row">
+                        <td colspan="3">${escapeHTML(c.category)}</td>
+                    </tr>
+                `;
+            }
+            const parts = splitCommandDescription(c.desc);
+            const examplesHTML = parts.examples.length
+                ? `<div class="cmd-examples">${parts.examples.map(ex =>
+                    `<code class="copyable-cmd" title="Click to copy">${escapeHTML(ex)}</code>`
+                  ).join('')}</div>`
+                : '';
             tableRowsHTML += `
                 <tr>
-                    <td><span class="xp-bounty">${c.category}</span></td>
-                    <td><code class="copyable-cmd">${c.cmd}</code></td>
-                    <td><span class="cmd-desc">${c.desc}</span></td>
-                    <td>
-                        <button class="btn-copy-cmd" onclick="copyCommandText(this, '${c.cmd.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">
+                    <td class="col-cmd"><code class="copyable-cmd" title="Click to copy">${escapeHTML(c.cmd)}</code></td>
+                    <td class="col-desc">
+                        <span class="cmd-desc">${escapeHTML(parts.text)}</span>
+                        ${examplesHTML}
+                    </td>
+                    <td class="col-action">
+                        <button class="btn-copy-cmd" data-cmd="${escapeHTML(c.cmd)}" onclick="copyCommandText(this, this.dataset.cmd)">
                             📋 Copy
                         </button>
                     </td>
@@ -2057,8 +2087,8 @@ function renderOSReference(os) {
     } else {
         tableRowsHTML = `
             <tr>
-                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 40px 0;">
-                    No matching Git commands found for "${searchVal}"
+                <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 40px 0;">
+                    No matching Git commands found for "${escapeHTML(searchVal)}"
                 </td>
             </tr>
         `;
@@ -2066,7 +2096,7 @@ function renderOSReference(os) {
 
     container.innerHTML = `
         <div class="os-install-box">
-            <h3>${osData.icon} Tips & Installing Git on ${osData.name}</h3>
+            <h3>${osData.icon} Tips &amp; Installing Git on ${osData.name}</h3>
             <div class="os-install-steps">
                 ${installHTML}
             </div>
@@ -2074,9 +2104,13 @@ function renderOSReference(os) {
 
         <div class="commands-table-container">
             <table class="commands-table">
+                <colgroup>
+                    <col class="c-cmd">
+                    <col class="c-desc">
+                    <col class="c-action">
+                </colgroup>
                 <thead>
                     <tr>
-                        <th>Category</th>
                         <th>Command</th>
                         <th>Description</th>
                         <th>Action</th>

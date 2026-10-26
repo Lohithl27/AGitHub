@@ -20,10 +20,33 @@ let virtualRepo = {
     currentBranch: 'master',
     remotes: {},
     pushed: false,
-    conflictResolved: false
+    conflictResolved: false,
+    dirty: false,
+    stashes: 0,
+    tags: [],
+    pushedTags: [],
+    aliases: {},
+    fetched: false,
+    synced: false,
+    cherryPicked: false
 };
 
-// --- DATA: 7 GENERAL GIT CURRICULUM CHALLENGES ---
+// --- DATA: 13 GIT CURRICULUM CHALLENGES ---
+// Compact status panel used by the CAD viewer. rows = [label, value, colour]
+function statusSVG(title, rows) {
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const items = rows.map((r, i) => {
+        const y = 62 + i * 30;
+        return `<rect x="20" y="${y - 16}" width="310" height="24" rx="5" fill="var(--bg-accent)" stroke="${r[2] || 'var(--primary)'}" stroke-width="1.5" />
+            <text x="30" y="${y}" fill="white" font-size="11">${esc(r[0])}</text>
+            <text x="320" y="${y}" text-anchor="end" fill="${r[2] || 'var(--primary)'}" font-size="11" font-weight="bold">${esc(r[1])}</text>`;
+    }).join('');
+    return `<svg width="100%" height="100%" viewBox="0 0 350 180">
+        <text x="20" y="25" fill="var(--text-secondary)" font-size="12" font-weight="bold">${esc(title)}</text>
+        ${items}
+    </svg>`;
+}
+
 const CHALLENGES = [
     {
         id: 1,
@@ -512,6 +535,406 @@ const CHALLENGES = [
                 </g>
             </svg>`;
         }
+    },
+    {
+        id: 8,
+        tag: "CHALLENGE 08",
+        title: "Undoing Mistakes",
+        desc: "Safely undo commits and unstage files with revert, restore and reset.",
+        xp: 150,
+        badge: { name: "Time Machine Badge", icon: "⏪" },
+        ytVideoId: "8JJ101D3knE",
+        overview: "Everyone makes mistakes, and Git gives you several ways to undo them. <code>git revert</code> adds a NEW commit that cancels an old one, so it is safe on shared branches. <code>git reset</code> moves the branch pointer backwards (<code>--soft</code> keeps your changes staged, <code>--hard</code> throws them away). <code>git restore --staged</code> only unstages a file.",
+        commands: [
+            { cmd: "git revert HEAD", usage: "Create a new commit that undoes the latest commit (safe for shared branches)." },
+            { cmd: "git restore --staged <file>", usage: "Unstage a file but keep your edits in the working directory." },
+            { cmd: "git reset --soft HEAD~1", usage: "Move the branch back one commit and keep the changes staged." },
+            { cmd: "git reset --hard HEAD~1", usage: "Move back one commit and DISCARD all changes (dangerous)." }
+        ],
+        steps: [
+            {
+                type: "multiple_choice",
+                text: "A broken commit has already been pushed to a shared branch. Which command undoes it WITHOUT rewriting history?",
+                hint: "Revert creates a new commit that cancels the old one, so nobody's history changes.",
+                options: [
+                    "git reset --hard HEAD~1 and then git push --force",
+                    "git revert HEAD",
+                    "git clean -fd",
+                    "Delete the repository and clone it again"
+                ],
+                correct: 1,
+                action: function(repo) {}
+            },
+            {
+                type: "terminal",
+                text: "Undo the latest commit (<code>oops: broke the build</code>) by creating a new reverting commit.",
+                hint: "Run 'git revert HEAD'.",
+                expected: /^git\s+revert\s+HEAD$/,
+                action: function(repo) {}
+            },
+            {
+                type: "terminal",
+                text: "You staged <code>index.html</code> by accident. Unstage it, but keep your edits.",
+                hint: "Run 'git restore --staged index.html'.",
+                expected: /^git\s+restore\s+--staged\s+index\.html$/,
+                action: function(repo) {
+                    repo.stagedFiles = [];
+                }
+            },
+            {
+                type: "terminal",
+                text: "Move the branch back ONE commit but keep the changes staged, so you can re-commit them properly.",
+                hint: "Run 'git reset --soft HEAD~1'.",
+                expected: /^git\s+reset\s+--soft\s+HEAD~1$/,
+                action: function(repo) {}
+            },
+            {
+                type: "multiple_choice",
+                text: "What does <code>git reset --hard HEAD~1</code> do?",
+                hint: "The word 'hard' means your working directory is changed too.",
+                options: [
+                    "Moves the branch back one commit and discards the changes in your files.",
+                    "Creates a new commit that undoes the last one.",
+                    "Unstages every file but keeps the commit.",
+                    "Deletes the remote repository."
+                ],
+                correct: 0,
+                action: function(repo) {}
+            }
+        ],
+        svgGen: function(stepIdx, repo) {
+            const rows = repo.commits.slice(-4).reverse().map((c, i) => [c.length > 34 ? c.slice(0, 33) + '…' : c, i === 0 ? 'HEAD' : '', i === 0 ? 'var(--accent)' : 'var(--primary)']);
+            if (repo.stagedFiles.length) rows.push(['index.html', 'STAGED', 'var(--success)']);
+            return statusSVG('COMMIT HISTORY (newest first)', rows.length ? rows : [['No commits', '', 'var(--text-muted)']]);
+        }
+    },
+    {
+        id: 9,
+        tag: "CHALLENGE 09",
+        title: "Stashing Work in Progress",
+        desc: "Park unfinished changes safely and bring them back later.",
+        xp: 150,
+        badge: { name: "Stash Master Badge", icon: "📦" },
+        ytVideoId: "SWYqp7iY_Tc",
+        overview: "Sometimes you must switch tasks before your work is ready to commit. <code>git stash</code> saves your uncommitted changes on a shelf and gives you a clean working directory. Later, <code>git stash pop</code> puts them back and removes them from the shelf, while <code>git stash apply</code> restores them but keeps a copy on the shelf.",
+        commands: [
+            { cmd: "git stash", usage: "Shelve all uncommitted changes and clean the working directory." },
+            { cmd: "git stash list", usage: "Show everything currently on the stash shelf." },
+            { cmd: "git stash pop", usage: "Restore the newest stash and remove it from the shelf." },
+            { cmd: "git stash apply", usage: "Restore the newest stash but keep it on the shelf." }
+        ],
+        steps: [
+            {
+                type: "terminal",
+                text: "You have unfinished edits in <code>index.html</code> but must fix an urgent bug. Shelve your changes with a stash.",
+                hint: "Run 'git stash'.",
+                expected: /^git\s+stash(\s+(push|save))?$/,
+                action: function(repo) {}
+            },
+            {
+                type: "terminal",
+                text: "Check what is on the stash shelf.",
+                hint: "Run 'git stash list'.",
+                expected: /^git\s+stash\s+list$/,
+                action: function(repo) {}
+            },
+            {
+                type: "terminal",
+                text: "The urgent bug is fixed. Bring your unfinished work back and remove it from the shelf.",
+                hint: "Run 'git stash pop'.",
+                expected: /^git\s+stash\s+pop$/,
+                action: function(repo) {}
+            },
+            {
+                type: "multiple_choice",
+                text: "What is the difference between <code>git stash pop</code> and <code>git stash apply</code>?",
+                hint: "One of them leaves a copy behind on the shelf.",
+                options: [
+                    "They are exactly the same command.",
+                    "pop restores the changes AND removes the stash; apply restores them but keeps the stash.",
+                    "apply deletes your changes; pop commits them.",
+                    "pop works only on branches named master."
+                ],
+                correct: 1,
+                action: function(repo) {}
+            }
+        ],
+        svgGen: function(stepIdx, repo) {
+            return statusSVG('STASH SHELF', [
+                ['Working directory', repo.dirty ? 'Unsaved edits' : 'Clean', repo.dirty ? 'var(--accent)' : 'var(--success)'],
+                ['Stash entries', String(repo.stashes), repo.stashes ? 'var(--primary)' : 'var(--text-muted)']
+            ]);
+        }
+    },
+    {
+        id: 10,
+        tag: "CHALLENGE 10",
+        title: "Ignoring Files & Tagging Releases",
+        desc: "Keep junk out of your repository and mark release points with tags.",
+        xp: 160,
+        badge: { name: "Release Badge", icon: "🏷️" },
+        ytVideoId: "hwP7WQkmECE",
+        overview: "A <code>.gitignore</code> file lists patterns of files Git should never track, such as logs, secrets and build folders. <b>Tags</b> give a permanent, human-friendly name to a specific commit, which is perfect for releases like <code>v1.0</code>. Tags are not pushed automatically: you push them by name.",
+        commands: [
+            { cmd: "*.log", usage: "In .gitignore: ignore every file ending in .log." },
+            { cmd: "git tag -a v1.0 -m \"First release\"", usage: "Create an annotated tag with a message." },
+            { cmd: "git tag", usage: "List all tags." },
+            { cmd: "git push origin v1.0", usage: "Upload one tag to the remote." }
+        ],
+        steps: [
+            {
+                type: "multiple_choice",
+                text: "Which line in <code>.gitignore</code> ignores EVERY file that ends in <code>.log</code>?",
+                hint: "The asterisk is a wildcard that matches any characters.",
+                options: [
+                    "log",
+                    "*.log",
+                    "!*.log",
+                    "/log.txt"
+                ],
+                correct: 1,
+                action: function(repo) {}
+            },
+            {
+                type: "terminal",
+                text: "Version 1 is ready! Create an annotated tag named <code>v1.0</code> with the message <code>\"First release\"</code>.",
+                hint: "Run 'git tag -a v1.0 -m \"First release\"'.",
+                expected: /^git\s+tag\s+-a\s+v1\.0\s+-m\s+['"][^'"]+['"]$/,
+                action: function(repo) {
+                    if (!repo.tags.includes('v1.0')) repo.tags.push('v1.0');
+                }
+            },
+            {
+                type: "terminal",
+                text: "List all tags to confirm it was created.",
+                hint: "Run 'git tag'.",
+                expected: /^git\s+tag$/,
+                action: function(repo) {}
+            },
+            {
+                type: "terminal",
+                text: "Tags are not pushed automatically. Upload the <code>v1.0</code> tag to <code>origin</code>.",
+                hint: "Run 'git push origin v1.0'.",
+                expected: /^git\s+push\s+origin\s+v1\.0$/,
+                action: function(repo) {
+                    repo.pushedTags.push('v1.0');
+                }
+            }
+        ],
+        svgGen: function(stepIdx, repo) {
+            return statusSVG('RELEASE TAGS', [
+                ['Local tag v1.0', repo.tags.includes('v1.0') ? 'Created' : 'Not yet', repo.tags.includes('v1.0') ? 'var(--success)' : 'var(--text-muted)'],
+                ['Remote tag v1.0', repo.pushedTags.includes('v1.0') ? 'Published' : 'Not pushed', repo.pushedTags.includes('v1.0') ? 'var(--accent)' : 'var(--text-muted)']
+            ]);
+        }
+    },
+    {
+        id: 11,
+        tag: "CHALLENGE 11",
+        title: "History & Cherry-Pick",
+        desc: "Read your project history and copy a single commit onto another branch.",
+        xp: 170,
+        badge: { name: "Historian Badge", icon: "📜" },
+        ytVideoId: "dJ2bklDBpVw",
+        overview: "<code>git log</code> shows the commit history and <code>git show &lt;hash&gt;</code> shows exactly what one commit changed. Sometimes you want only ONE commit from another branch, not the whole branch: <code>git cherry-pick &lt;hash&gt;</code> copies that single commit onto your current branch.",
+        commands: [
+            { cmd: "git log --oneline", usage: "Show history, one short line per commit." },
+            { cmd: "git show <hash>", usage: "Show the details and changes of one commit." },
+            { cmd: "git cherry-pick <hash>", usage: "Copy one commit onto the current branch." }
+        ],
+        steps: [
+            {
+                type: "terminal",
+                text: "See the project history in a compact, one-line-per-commit format.",
+                hint: "Run 'git log --oneline'.",
+                expected: /^git\s+log\s+--oneline(\s+--graph)?(\s+--all)?$/,
+                action: function(repo) {}
+            },
+            {
+                type: "terminal",
+                text: "A teammate fixed a typo in commit <code>a1b2c3d</code> on the <code>bugfix</code> branch. Look at what that commit changed.",
+                hint: "Run 'git show a1b2c3d'.",
+                expected: /^git\s+show\s+a1b2c3d$/,
+                action: function(repo) {}
+            },
+            {
+                type: "terminal",
+                text: "You are on <code>master</code> and want ONLY that fix, not the whole bugfix branch. Copy the commit over.",
+                hint: "Run 'git cherry-pick a1b2c3d'.",
+                expected: /^git\s+cherry-pick\s+a1b2c3d$/,
+                action: function(repo) {}
+            },
+            {
+                type: "multiple_choice",
+                text: "When is <code>git cherry-pick</code> the right tool?",
+                hint: "Think 'pick one cherry', not the whole tree.",
+                options: [
+                    "When you want to copy one specific commit onto another branch.",
+                    "When you want to delete a branch.",
+                    "When you want to download a repository.",
+                    "When you want to rename a file."
+                ],
+                correct: 0,
+                action: function(repo) {}
+            }
+        ],
+        svgGen: function(stepIdx, repo) {
+            return statusSVG('BRANCH: master', [
+                ['Commits on master', String(repo.commits.length), 'var(--primary)'],
+                ['bugfix: a1b2c3d "fix typo"', repo.cherryPicked ? 'Copied ✓' : 'Only on bugfix', repo.cherryPicked ? 'var(--success)' : 'var(--accent)']
+            ]);
+        }
+    },
+    {
+        id: 12,
+        tag: "CHALLENGE 12",
+        title: "Cloning & Syncing Forks",
+        desc: "Clone a project, link the original repository and pull in its latest changes.",
+        xp: 180,
+        badge: { name: "Open Source Badge", icon: "🌍" },
+        ytVideoId: "RGOj5yH7evk",
+        overview: "<code>git clone</code> downloads a whole repository. When you work on a <b>fork</b>, the original project is usually added as a second remote named <code>upstream</code>. <code>git fetch</code> downloads new commits without changing your files, and <code>git merge</code> (or <code>git pull</code>, which is fetch + merge) brings them in.",
+        commands: [
+            { cmd: "git clone <url>", usage: "Download a repository and its full history." },
+            { cmd: "git remote add upstream <url>", usage: "Link the original repository of a fork." },
+            { cmd: "git fetch upstream", usage: "Download upstream changes without merging them." },
+            { cmd: "git merge upstream/main", usage: "Merge the fetched upstream changes into your branch." }
+        ],
+        steps: [
+            {
+                type: "terminal",
+                text: "Download the repository <code>https://github.com/octocat/Spoon-Knife.git</code> to your computer.",
+                hint: "Run 'git clone https://github.com/octocat/Spoon-Knife.git'.",
+                expected: /^git\s+clone\s+https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\.git)?$/,
+                action: function(repo) {
+                    repo.initialized = true;
+                    repo.remotes['origin'] = 'https://github.com/octocat/Spoon-Knife.git';
+                    repo.committedFiles = ['README.md'];
+                    repo.commits = ['initial commit'];
+                    repo.branches = ['main'];
+                    repo.currentBranch = 'main';
+                }
+            },
+            {
+                type: "terminal",
+                text: "Link the ORIGINAL project as a second remote named <code>upstream</code> (URL: <code>https://github.com/octocat/Spoon-Knife.git</code>).",
+                hint: "Run 'git remote add upstream https://github.com/octocat/Spoon-Knife.git'.",
+                expected: /^git\s+remote\s+add\s+upstream\s+https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\.git)?$/,
+                action: function(repo) {
+                    repo.remotes['upstream'] = 'https://github.com/octocat/Spoon-Knife.git';
+                }
+            },
+            {
+                type: "terminal",
+                text: "Download the latest upstream commits WITHOUT changing your files yet.",
+                hint: "Run 'git fetch upstream'.",
+                expected: /^git\s+fetch\s+upstream$/,
+                action: function(repo) {
+                    repo.fetched = true;
+                }
+            },
+            {
+                type: "multiple_choice",
+                text: "What does <code>git pull</code> do?",
+                hint: "Pull is a shortcut that combines two commands.",
+                options: [
+                    "It only uploads your commits.",
+                    "It runs git fetch and then merges the changes into your current branch.",
+                    "It deletes the remote branch.",
+                    "It creates a new repository."
+                ],
+                correct: 1,
+                action: function(repo) {}
+            },
+            {
+                type: "terminal",
+                text: "Merge the fetched upstream changes into your current <code>main</code> branch.",
+                hint: "Run 'git merge upstream/main'.",
+                expected: /^git\s+merge\s+upstream\/(main|master)$/,
+                action: function(repo) {
+                    repo.synced = true;
+                }
+            }
+        ],
+        svgGen: function(stepIdx, repo) {
+            return statusSVG('FORK SYNC', [
+                ['Local copy (origin)', repo.remotes['origin'] ? 'Cloned ✓' : 'Not cloned', repo.remotes['origin'] ? 'var(--success)' : 'var(--text-muted)'],
+                ['Original (upstream)', repo.remotes['upstream'] ? 'Linked ✓' : 'Not linked', repo.remotes['upstream'] ? 'var(--primary)' : 'var(--text-muted)'],
+                ['Latest changes', repo.synced ? 'Merged ✓' : (repo.fetched ? 'Fetched' : 'Not fetched'), repo.synced ? 'var(--success)' : (repo.fetched ? 'var(--accent)' : 'var(--text-muted)')]
+            ]);
+        }
+    },
+    {
+        id: 13,
+        tag: "CHALLENGE 13",
+        title: "Config & Aliases",
+        desc: "Set your identity and create time-saving shortcuts for long commands.",
+        xp: 190,
+        badge: { name: "Power User Badge", icon: "⚡" },
+        ytVideoId: "tRZGeaHPoaw",
+        overview: "Git stamps every commit with your name and email, set once with <code>git config --global</code>. You can also create <b>aliases</b>: your own short names for longer commands, such as <code>git st</code> for <code>git status</code>. <code>git config --list</code> prints every setting Git currently knows.",
+        commands: [
+            { cmd: "git config --global user.name \"Name\"", usage: "Set the name stamped on your commits." },
+            { cmd: "git config --global user.email \"you@example.com\"", usage: "Set the email stamped on your commits." },
+            { cmd: "git config --global alias.st status", usage: "Create the shortcut 'git st' for 'git status'." },
+            { cmd: "git config --list", usage: "Show all current settings." }
+        ],
+        steps: [
+            {
+                type: "terminal",
+                text: "Tell Git who you are. Set your global name to <code>\"Ada Lovelace\"</code>.",
+                hint: "Run 'git config --global user.name \"Ada Lovelace\"'.",
+                expected: /^git\s+config\s+--global\s+user\.name\s+['"][^'"]+['"]$/,
+                action: function(repo) {
+                    repo.configName = 'Ada Lovelace';
+                }
+            },
+            {
+                type: "terminal",
+                text: "Now set your global email to <code>ada@example.com</code>.",
+                hint: "Run 'git config --global user.email \"ada@example.com\"'.",
+                expected: /^git\s+config\s+--global\s+user\.email\s+['"]?[^\s'"]+@[^\s'"]+\.[^\s'"]+['"]?$/,
+                action: function(repo) {
+                    repo.configEmail = 'ada@example.com';
+                }
+            },
+            {
+                type: "terminal",
+                text: "Create an alias so that <code>git st</code> means <code>git status</code>.",
+                hint: "Run 'git config --global alias.st status'.",
+                expected: /^git\s+config\s+--global\s+alias\.st\s+status$/,
+                action: function(repo) {
+                    repo.aliases['st'] = 'status';
+                }
+            },
+            {
+                type: "terminal",
+                text: "Try your new shortcut!",
+                hint: "Run 'git st'.",
+                expected: /^git\s+st$/,
+                action: function(repo) {}
+            },
+            {
+                type: "multiple_choice",
+                text: "Which command prints ALL of your current Git settings?",
+                hint: "The flag name is also the word for 'show me everything'.",
+                options: [
+                    "git config --list",
+                    "git show config",
+                    "git settings",
+                    "git status --config"
+                ],
+                correct: 0,
+                action: function(repo) {}
+            }
+        ],
+        svgGen: function(stepIdx, repo) {
+            return statusSVG('GIT SETTINGS', [
+                ['user.name', repo.configName || 'not set', repo.configName ? 'var(--success)' : 'var(--text-muted)'],
+                ['user.email', repo.configEmail || 'not set', repo.configEmail ? 'var(--success)' : 'var(--text-muted)'],
+                ['alias.st', repo.aliases['st'] || 'not set', repo.aliases['st'] ? 'var(--accent)' : 'var(--text-muted)']
+            ]);
+        }
     }
 ];
 
@@ -759,39 +1182,57 @@ function setupProfileListeners() {
     const form = document.getElementById('profile-update-form');
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const name = document.getElementById('profile-username-input').value;
+        if (!currentUser) return;
+        const name = document.getElementById('profile-username-input').value.trim();
         const activeAvatar = document.querySelector('.avatar-option.active').textContent;
-        
-        currentUser.username = name;
-        
-        if (currentUser.badges.length > 0 && ['🎓','💻','🛠️','🐙','🚀','🔑','🏆','🌟'].includes(currentUser.badges[0])) {
-            currentUser.badges[0] = activeAvatar;
+
+        // Avatar is stored as the first "badge" entry
+        const avatars = ['🎓','💻','🛠️','🐙','🚀','🔑','🏆','🌟'];
+        const badges = [...currentUser.badges];
+        if (badges.length > 0 && avatars.includes(badges[0])) {
+            badges[0] = activeAvatar;
         } else {
-            currentUser.badges.unshift(activeAvatar);
+            badges.unshift(activeAvatar);
         }
 
         try {
+            // 1) Save the display name (the server validates it and checks it is free)
+            if (name !== currentUser.username) {
+                const nameRes = await fetch('/api/update-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: name })
+                });
+                const nameData = await nameRes.json();
+                if (!nameData.success) {
+                    alert(nameData.message || "Could not update your username.");
+                    return;
+                }
+            }
+
+            // 2) Save the avatar
             await fetch('/api/update-progress', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     level: currentUser.level,
                     xp: currentUser.xp,
-                    badges: currentUser.badges,
+                    badges: badges,
                     progress: currentUser.progress
                 })
             });
-            
+
+            // 3) Reload the saved profile so the screen shows what is really stored
             const res = await fetch('/api/profile');
             const data = await res.json();
             if (data.success) {
                 currentUser = data.profile;
                 updateHeaderStatus();
-                alert("Profile credentials updated successfully.");
+                alert("Profile updated successfully.");
                 showDashboard();
             }
         } catch (err) {
-            alert("Failed to sync profile configuration details.");
+            alert("Failed to save your profile. Please try again.");
         }
     });
 }
@@ -843,20 +1284,41 @@ function updateDashboardUI() {
         certWidget.classList.add('locked');
         certWidget.classList.remove('unlocked');
         certOpenBtn.disabled = true;
-        certStatusText.textContent = "Complete all 7 Git challenges to unlock your graduation credentials.";
+        certStatusText.textContent = `Complete all ${CHALLENGES.length} Git challenges to unlock your graduation credentials.`;
     }
 
     // Bind Certificate Modal Open
-    certOpenBtn.onclick = () => {
+    certOpenBtn.onclick = async () => {
+        // Make sure we have the stored completion date (set by the server the first time all challenges are done)
+        try {
+            const res = await fetch('/api/profile');
+            const data = await res.json();
+            if (data.success) currentUser = data.profile;
+        } catch (e) { /* fall back to what we already have */ }
+
         document.getElementById('cert-name-display').textContent = currentUser.username.toUpperCase();
         document.getElementById('cert-verification-id').textContent = `AGIT-${currentUser.id || '99'}${currentUser.xp}A`;
+        document.getElementById('cert-date-display').textContent = formatCertDate(currentUser.completed_at);
         document.getElementById('cert-overlay').classList.remove('hidden');
     };
     document.getElementById('cert-modal-close').onclick = () => {
         document.getElementById('cert-overlay').classList.add('hidden');
     };
 
+    updateChallengeTotals();
     renderChallengesChecklist();
+}
+
+// Certificate date: the day the learner completed everything (falls back to today)
+function formatCertDate(isoString) {
+    const d = isoString ? new Date(isoString) : new Date();
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function updateChallengeTotals() {
+    document.querySelectorAll('.challenge-total').forEach(el => {
+        el.textContent = CHALLENGES.length;
+    });
 }
 
 function renderChallengesChecklist() {
@@ -998,7 +1460,15 @@ function startChallenge(challenge) {
         currentBranch: 'master',
         remotes: {},
         pushed: false,
-        conflictResolved: false
+        conflictResolved: false,
+        dirty: false,
+        stashes: 0,
+        tags: [],
+        pushedTags: [],
+        aliases: {},
+        fetched: false,
+        synced: false,
+        cherryPicked: false
     };
 
     // Prepopulate git history state based on completed milestones
@@ -1020,6 +1490,28 @@ function startChallenge(challenge) {
     if (challenge.id > 5) {
         virtualRepo.remotes['origin'] = 'https://github.com/student/gitopia.git';
         virtualRepo.pushed = true;
+    }
+    if (challenge.id > 7) {
+        virtualRepo.commits.push("add login");
+    }
+    if (challenge.id === 8) {
+        virtualRepo.commits.push("oops: broke the build");
+        virtualRepo.stagedFiles = ['index.html'];
+    }
+    if (challenge.id === 9) {
+        virtualRepo.dirty = true;
+    }
+    if (challenge.id === 12) {
+        // Fresh start: nothing on disk yet, the learner clones a project
+        virtualRepo.initialized = false;
+        virtualRepo.committedFiles = [];
+        virtualRepo.commits = [];
+        virtualRepo.remotes = {};
+        virtualRepo.pushed = false;
+    }
+    if (challenge.id === 13) {
+        virtualRepo.configName = '';
+        virtualRepo.configEmail = '';
     }
 
     // Set header labels
@@ -1404,16 +1896,24 @@ function scrollConsole() {
 }
 
 function handleGitWorkspaceCommand(cmd) {
-    const parts = cmd.split(/\s+/);
-    const sub = parts[1];
+    const original = cmd;   // challenge checks always match what the learner typed
+    let parts = (cmd.match(/"[^"]*"|'[^']*'|\S+/g) || []).map(p => p.replace(/^["']|["']$/g, ''));
+    let sub = parts[1];
 
-    if (!virtualRepo.initialized && sub !== 'init') {
+    // Expand user-defined aliases (git config --global alias.st status)
+    if (virtualRepo.aliases[sub]) {
+        parts = ['git', ...virtualRepo.aliases[sub].split(/\s+/), ...parts.slice(2)];
+        sub = parts[1];
+        cmd = parts.join(' ');
+    }
+
+    if (!virtualRepo.initialized && !['init', 'clone', 'config'].includes(sub)) {
         appendConsoleLine("fatal: not a git repository (or any of the parent directories): .git", "cmd-error");
         return;
     }
 
     const step = currentChallenge.steps[currentStepIndex];
-    const isMatching = step && step.expected && step.expected.test(cmd);
+    const isMatching = step && step.expected && step.expected.test(original);
 
     // Dynamic responses for Git commands
     if (sub === 'init') {
@@ -1425,8 +1925,10 @@ function handleGitWorkspaceCommand(cmd) {
         if (virtualRepo.stagedFiles.length > 0) {
             out += "Changes to be committed:\n";
             virtualRepo.stagedFiles.forEach(f => {
-                out += `\tnew file:   ${f}\n`;
+                out += `\t${virtualRepo.committedFiles.includes(f) ? 'modified' : 'new file'}:   ${f}\n`;
             });
+        } else if (virtualRepo.dirty) {
+            out += "Changes not staged for commit:\n\tmodified:   index.html";
         } else if (virtualRepo.committedFiles.includes('index.html')) {
             out += "nothing to commit, working tree clean";
         } else {
@@ -1490,7 +1992,14 @@ function handleGitWorkspaceCommand(cmd) {
     } 
     else if (sub === 'merge') {
         const branch = parts[2];
-        if (branch === 'feature-login') {
+        if (/^upstream\//.test(branch || '')) {
+            if (!virtualRepo.fetched) {
+                appendConsoleLine(`merge: ${branch} - not something we can merge (run 'git fetch upstream' first)`, "cmd-error");
+            } else {
+                virtualRepo.synced = true;
+                appendConsoleLine(`Updating d3b90a8..9f4e7c2\nFast-forward\n README.md | 3 +++\n 1 file changed, 3 insertions(+)`, "cmd-success");
+            }
+        } else if (branch === 'feature-login') {
             if (!virtualRepo.committedFiles.includes('login.js')) virtualRepo.committedFiles.push('login.js');
             appendConsoleLine(`Updating ${virtualRepo.currentBranch}... fast-forward\n Merged branch '${branch}'.`, "cmd-success");
         } else {
@@ -1502,13 +2011,166 @@ function handleGitWorkspaceCommand(cmd) {
             const name = parts[3];
             const url = parts[4];
             virtualRepo.remotes[name] = url;
-            appendConsoleLine(`Remote origin registry established: ${url}`, "cmd-success");
+            appendConsoleLine(`Remote '${name}' added: ${url}`, "cmd-success");
+        } else {
+            appendConsoleLine(Object.keys(virtualRepo.remotes).join('\n') || '(no remotes)');
         }
     } 
     else if (sub === 'push') {
-        virtualRepo.pushed = true;
-        appendConsoleLine("Counting objects: 100% (5/5), done.\nPush complete to remote origin.", "cmd-success");
+        const pushTarget = parts[3];
+        if (parts[2] && virtualRepo.tags.includes(pushTarget)) {
+            if (!virtualRepo.pushedTags.includes(pushTarget)) virtualRepo.pushedTags.push(pushTarget);
+            appendConsoleLine(`To ${virtualRepo.remotes[parts[2]] || parts[2]}\n * [new tag]         ${pushTarget} -> ${pushTarget}`, "cmd-success");
+        } else {
+            virtualRepo.pushed = true;
+            appendConsoleLine("Counting objects: 100% (5/5), done.\nPush complete to remote origin.", "cmd-success");
+        }
     } 
+    else if (sub === 'config') {
+        const key = parts[parts[2] === '--global' ? 3 : 2];
+        const val = parts.slice(parts[2] === '--global' ? 4 : 3).join(' ');
+        if (parts.includes('--list') || parts.includes('-l')) {
+            let out = [];
+            if (virtualRepo.configName) out.push(`user.name=${virtualRepo.configName}`);
+            if (virtualRepo.configEmail) out.push(`user.email=${virtualRepo.configEmail}`);
+            Object.keys(virtualRepo.aliases).forEach(a => out.push(`alias.${a}=${virtualRepo.aliases[a]}`));
+            appendConsoleLine(out.join('\n') || '(no settings yet)');
+        } else if (key === 'user.name' && val) {
+            virtualRepo.configName = val;
+            appendConsoleLine(`user.name set to "${val}"`, "cmd-success");
+        } else if (key === 'user.email' && val) {
+            virtualRepo.configEmail = val;
+            appendConsoleLine(`user.email set to "${val}"`, "cmd-success");
+        } else if (key && key.startsWith('alias.') && val) {
+            virtualRepo.aliases[key.slice(6)] = val;
+            appendConsoleLine(`Alias created: git ${key.slice(6)} -> git ${val}`, "cmd-success");
+        } else {
+            appendConsoleLine("error: usage: git config [--global] <key> <value>", "cmd-error");
+        }
+    }
+    else if (sub === 'clone') {
+        const url = parts[2];
+        if (!url) {
+            appendConsoleLine("fatal: You must specify a repository to clone.", "cmd-error");
+        } else {
+            const repoName = url.replace(/\.git$/, '').split('/').pop();
+            virtualRepo.initialized = true;
+            virtualRepo.remotes['origin'] = url;
+            virtualRepo.committedFiles = ['README.md'];
+            virtualRepo.commits = ['initial commit'];
+            virtualRepo.branches = ['main'];
+            virtualRepo.currentBranch = 'main';
+            appendConsoleLine(`Cloning into '${repoName}'...\nremote: Enumerating objects: 13, done.\nReceiving objects: 100% (13/13), done.`, "cmd-success");
+        }
+    }
+    else if (sub === 'fetch') {
+        const remote = parts[2] || 'origin';
+        if (!virtualRepo.remotes[remote]) {
+            appendConsoleLine(`fatal: '${remote}' does not appear to be a git repository`, "cmd-error");
+        } else {
+            virtualRepo.fetched = true;
+            appendConsoleLine(`From ${virtualRepo.remotes[remote]}\n * [new branch]      main       -> ${remote}/main`, "cmd-success");
+        }
+    }
+    else if (sub === 'pull') {
+        virtualRepo.fetched = true;
+        virtualRepo.synced = true;
+        appendConsoleLine("Already up to date. (fetch + merge complete)", "cmd-success");
+    }
+    else if (sub === 'log') {
+        if (virtualRepo.commits.length === 0) {
+            appendConsoleLine("fatal: your current branch has no commits yet", "cmd-error");
+        } else {
+            const hashes = ['d3b90a8', 'c41f7e2', 'b7a9031', 'a1e5c64', '9f4e7c2', '8d2b0a5'];
+            const lines = virtualRepo.commits.slice().reverse().map((c, i) =>
+                (cmd.includes('--graph') ? '* ' : '') + `${hashes[i % hashes.length]}${i === 0 ? ' (HEAD -> ' + virtualRepo.currentBranch + ')' : ''} ${c}`);
+            appendConsoleLine(lines.join('\n'));
+        }
+    }
+    else if (sub === 'show') {
+        const ref = parts[2] || 'HEAD';
+        if (ref === 'a1b2c3d') {
+            appendConsoleLine("commit a1b2c3d (bugfix)\nAuthor: Teammate <team@example.com>\n\n    fix typo\n\n-<h1>Welcom to Agithub</h1>\n+<h1>Welcome to Agithub</h1>");
+        } else {
+            const last = virtualRepo.commits[virtualRepo.commits.length - 1] || '(none)';
+            appendConsoleLine(`commit d3b90a8 (HEAD -> ${virtualRepo.currentBranch})\n\n    ${last}`);
+        }
+    }
+    else if (sub === 'diff') {
+        appendConsoleLine(virtualRepo.dirty ? "--- a/index.html\n+++ b/index.html\n@@ -1,3 +1,4 @@\n+<!-- work in progress -->" : "(no differences)");
+    }
+    else if (sub === 'revert') {
+        const last = virtualRepo.commits[virtualRepo.commits.length - 1];
+        if (!last) {
+            appendConsoleLine("fatal: no commits to revert", "cmd-error");
+        } else {
+            virtualRepo.commits.push(`Revert "${last}"`);
+            appendConsoleLine(`[${virtualRepo.currentBranch} 7e3d1b9] Revert "${last}"\n 1 file changed, 2 deletions(-)`, "cmd-success");
+        }
+    }
+    else if (sub === 'restore') {
+        const file = parts[parts.length - 1];
+        if (parts.includes('--staged')) {
+            virtualRepo.stagedFiles = virtualRepo.stagedFiles.filter(f => f !== file);
+            appendConsoleLine(`Unstaged ${file} (your edits are still in the working directory).`, "cmd-success");
+        } else {
+            virtualRepo.dirty = false;
+            appendConsoleLine(`Restored ${file} from the last commit.`, "cmd-success");
+        }
+    }
+    else if (sub === 'reset') {
+        const mode = parts.includes('--hard') ? 'hard' : (parts.includes('--soft') ? 'soft' : 'mixed');
+        if (parts.some(p => /^HEAD~\d+$/.test(p))) {
+            const n = parseInt(parts.find(p => /^HEAD~\d+$/.test(p)).slice(5), 10);
+            virtualRepo.commits.splice(Math.max(0, virtualRepo.commits.length - n), n);
+            if (mode === 'hard') { virtualRepo.stagedFiles = []; virtualRepo.dirty = false; }
+            appendConsoleLine(mode === 'hard' ? "HEAD is now at the previous commit. Working directory changes discarded." : `Branch moved back ${n} commit(s). Changes kept${mode === 'soft' ? ' and staged' : ''}.`, "cmd-success");
+        } else {
+            virtualRepo.stagedFiles = [];
+            appendConsoleLine("Unstaged changes after reset.", "cmd-success");
+        }
+    }
+    else if (sub === 'stash') {
+        const action = parts[2] || 'push';
+        if (action === 'list') {
+            const out = [];
+            for (let i = 0; i < virtualRepo.stashes; i++) out.push(`stash@{${i}}: WIP on ${virtualRepo.currentBranch}: d3b90a8 work in progress`);
+            appendConsoleLine(out.join('\n') || '(stash is empty)');
+        } else if (action === 'pop' || action === 'apply') {
+            if (virtualRepo.stashes === 0) {
+                appendConsoleLine("No stash entries found.", "cmd-error");
+            } else {
+                virtualRepo.dirty = true;
+                if (action === 'pop') virtualRepo.stashes -= 1;
+                appendConsoleLine(action === 'pop' ? "Changes restored. Dropped stash@{0}." : "Changes restored. (stash kept on the shelf)", "cmd-success");
+            }
+        } else if (!virtualRepo.dirty) {
+            appendConsoleLine("No local changes to save", "welcome-text");
+        } else {
+            virtualRepo.dirty = false;
+            virtualRepo.stashes += 1;
+            appendConsoleLine(`Saved working directory and index state WIP on ${virtualRepo.currentBranch}`, "cmd-success");
+        }
+    }
+    else if (sub === 'tag') {
+        const name = parts.find((p, i) => i > 1 && !p.startsWith('-') && parts[i - 1] !== '-m');
+        if (!name) {
+            appendConsoleLine(virtualRepo.tags.join('\n') || '(no tags yet)');
+        } else {
+            if (!virtualRepo.tags.includes(name)) virtualRepo.tags.push(name);
+            appendConsoleLine(`Tag '${name}' created.`, "cmd-success");
+        }
+    }
+    else if (sub === 'cherry-pick') {
+        const hash = parts[2];
+        if (hash === 'a1b2c3d') {
+            virtualRepo.commits.push('fix typo');
+            virtualRepo.cherryPicked = true;
+            appendConsoleLine(`[${virtualRepo.currentBranch} 5c8e2f1] fix typo\n 1 file changed, 1 insertion(+), 1 deletion(-)`, "cmd-success");
+        } else {
+            appendConsoleLine(`fatal: bad revision '${hash || ''}'`, "cmd-error");
+        }
+    }
     else if (sub === 'rebase') {
         appendConsoleLine("Successfully rebased current branch refs.", "cmd-success");
     } 

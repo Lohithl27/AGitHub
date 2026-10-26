@@ -265,6 +265,19 @@ def get_profile():
     return jsonify({"success": True, "profile": profile})
 
 
+@app.route('/api/update-profile', methods=['POST'])
+def update_profile():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+    data = request.get_json() or {}
+    ok, error = database.update_username(user_id, data.get('username', ''))
+    if not ok:
+        return jsonify({"success": False, "message": error}), 400
+    return jsonify({"success": True, "message": "Profile updated.",
+                    "profile": database.get_user_profile(user_id)})
+
+
 @app.route('/api/update-progress', methods=['POST'])
 def update_progress():
     user_id = session.get('user_id')

@@ -2010,3 +2010,150 @@ pre code {
         justify-content: center;
     }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   LEGO × ROBOTICS THEME  — brick colours, studs, chunky 3-D buttons,
+   baseplate background and a circuit-board / terminal feel.
+   (Overrides the design tokens above; keep this block last.)
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+    --bg-main: #10141C;
+    --bg-card: #1B2230;
+    --bg-accent: #262F42;
+    --border: rgba(255, 255, 255, 0.12);
+    --border-hover: rgba(255, 213, 0, 0.55);
+
+    --primary: #2D8CFF;          /* brick blue   */
+    --primary-hover: #55A3FF;
+    --accent: #FFD500;           /* brick yellow */
+    --accent-hover: #FFE14D;
+    --success: #1FD07A;          /* brick green  */
+    --success-hover: #4CE096;
+    --danger: #FF3B30;           /* brick red    */
+
+    --font-heading: 'Fredoka', 'Plus Jakarta Sans', sans-serif;
+    --brick-red: #E3000B;
+    --brick-yellow: #FFD500;
+    --brick-blue: #0055BF;
+    --brick-green: #00A651;
+}
+
+/* Baseplate: a faint grid of studs, plus circuit-trace glow */
+body {
+    background-color: var(--bg-main);
+    background-image:
+        radial-gradient(circle at 16px 16px, rgba(255, 255, 255, 0.07) 0 4px, transparent 4.5px),
+        linear-gradient(rgba(45, 140, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(45, 140, 255, 0.04) 1px, transparent 1px);
+    background-size: 32px 32px, 32px 32px, 32px 32px;
+}
+
+h1, h2, h3, h4, .sidebar-title, .cert-title, .cert-recipient-name {
+    font-family: var(--font-heading);
+    letter-spacing: 0.2px;
+}
+
+/* Header: dark console with a yellow brick-stripe and a row of studs */
+.app-header {
+    background: #171C27;
+    border-bottom: 5px solid var(--brick-yellow);
+    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.35);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+.app-header::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: -17px;
+    height: 12px;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 50% 100%, var(--brick-yellow) 0 6px, transparent 6.5px) 0 0 / 40px 12px repeat-x;
+    opacity: 0.9;
+}
+
+.nav-link.active, .nav-link:hover {
+    color: #111 !important;
+    background: var(--brick-yellow) !important;
+    border-radius: 8px;
+}
+
+/* Cards = bricks: coloured top edge with studs along it */
+.card, .challenge-row-card, .topic-detail-card, .topic-cheat-card,
+.profile-settings-card, .operator-card, .auth-card {
+    position: relative;
+    border: 2px solid var(--border);
+    border-top: 6px solid var(--brick-yellow);
+    border-radius: 14px;
+    box-shadow: 0 5px 0 rgba(0, 0, 0, 0.4);
+}
+.card::before, .auth-card::before, .operator-card::before {
+    content: '';
+    position: absolute;
+    left: 14px; right: 14px; top: -15px;
+    height: 9px;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 100%, var(--brick-yellow) 0 5px, transparent 5.5px) 0 0 / 26px 9px repeat-x;
+}
+.card:hover, .challenge-row-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 0 rgba(0, 0, 0, 0.4);
+}
+/* Rotate brick colours so the dashboard feels like a mixed set */
+.card:nth-of-type(4n+2), .challenge-row-card:nth-of-type(4n+2) { border-top-color: var(--brick-red); }
+.card:nth-of-type(4n+3), .challenge-row-card:nth-of-type(4n+3) { border-top-color: #2D8CFF; }
+.card:nth-of-type(4n+0), .challenge-row-card:nth-of-type(4n+0) { border-top-color: var(--brick-green); }
+.card:nth-of-type(4n+2)::before { background-image: radial-gradient(circle at 50% 100%, var(--brick-red) 0 5px, transparent 5.5px); }
+.card:nth-of-type(4n+3)::before { background-image: radial-gradient(circle at 50% 100%, #2D8CFF 0 5px, transparent 5.5px); }
+.card:nth-of-type(4n+0)::before { background-image: radial-gradient(circle at 50% 100%, var(--brick-green) 0 5px, transparent 5.5px); }
+
+/* Chunky, pressable brick buttons */
+.btn {
+    border-radius: 8px;
+    border-bottom: 5px solid rgba(0, 0, 0, 0.35);
+    letter-spacing: 0.8px;
+    font-weight: 700;
+}
+.btn:active { transform: translateY(3px) !important; border-bottom-width: 2px; }
+.btn-primary { background: var(--brick-blue); color: #fff; }
+.btn-primary:hover { background: #1A6FE0; }
+.btn-accent { background: var(--brick-yellow); color: #151515; }
+.btn-accent:hover { background: var(--accent-hover); }
+.btn-secondary { border: 2px solid var(--border); border-bottom: 5px solid rgba(0, 0, 0, 0.35); }
+
+/* Robotics touches: monospace "telemetry" tags and a glowing terminal */
+.xp-bounty, .challenge-tag, #active-challenge-tag {
+    font-family: var(--font-mono);
+    letter-spacing: 1px;
+}
+.console-header {
+    border-top: 4px solid var(--brick-green);
+}
+#workspace-terminal-history, .terminal-body {
+    box-shadow: inset 0 0 24px rgba(31, 208, 122, 0.08);
+}
+#active-cad-viewer {
+    background-image:
+        linear-gradient(rgba(45, 140, 255, 0.10) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(45, 140, 255, 0.10) 1px, transparent 1px);
+    background-size: 22px 22px;
+    border-radius: 10px;
+}
+
+/* Certificate: brick-yellow frame with red/blue accents + completion date */
+.cert-border-outer { border: 10px solid var(--brick-yellow); border-radius: 10px; outline: 3px solid #111; outline-offset: -3px; }
+.cert-border-inner { border: 3px dashed var(--brick-red); }
+.cert-subtitle { color: var(--brick-red); }
+.cert-title { color: #111; }
+.cert-watermark { color: rgba(227, 0, 11, 0.05); }
+.cert-date-value {
+    display: block;
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1F2937;
+    margin-bottom: 6px;
+    white-space: nowrap;
+}
+.cert-signature-block { width: 190px; }

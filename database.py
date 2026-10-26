@@ -16,6 +16,9 @@ import psycopg2.extras
 #   postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
+# Number of challenges in static/app.js (CHALLENGES array). Keep both in sync.
+TOTAL_CHALLENGES = 13
+
 
 def get_db_connection():
     if not DATABASE_URL:
@@ -48,6 +51,8 @@ def init_db():
             progress TEXT DEFAULT '{}'
         )
     ''')
+    # Date the learner finished every challenge (shown on the certificate)
+    cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ')
     conn.commit()
     cursor.close()
     conn.close()
@@ -125,7 +130,7 @@ def get_user_profile(user_id):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        'SELECT id, username, email, level, xp, badges, progress FROM users WHERE id = %s',
+        'SELECT id, username, email, level, xp, badges, progress, completed_at FROM users WHERE id = %s',
         (user_id,)
     )
     user = cursor.fetchone()
@@ -138,6 +143,10 @@ def get_user_profile(user_id):
             user_dict['badges'] = json.loads(user_dict['badges'])
         if isinstance(user_dict['progress'], str):
             user_dict['progress'] = json.loads(user_dict['progress'])
+        # JSON-friendly ISO timestamp (UTC), or None until everything is completed
+        if user_dict.get('completed_at'):
+            user_dict['completed_at'] = user_dict['completed_at'].isoformat()
+        user_dict['total_challenges'] = TOTAL_CHALLENGES
         return user_dict
     return None
 
@@ -153,19 +162,52 @@ def update_user_progress(user_id, level, xp, badges, progress):
     ''', (level, xp, badges_str, progress_str, user_id))
     conn.commit()
 
-    # Check if all 7 challenges completed — log certificate claim
+    # When every challenge is completed, stamp the completion date ONCE
+    # (first time only) and log the certificate claim.
     progress_dict = progress if isinstance(progress, dict) else json.loads(progress)
     completed = sum(1 for v in progress_dict.values() if v == 'completed')
-    if completed >= 7:
-        cursor.execute('SELECT username, email FROM users WHERE id = %s', (user_id,))
-        u = cursor.fetchone()
-        if u:
-            cert_id = f"AGIT-{user_id}{xp}A"
-            log_to_sheets('CERTIFICATE', u['username'], u['email'], cert_id)
+    if completed >= TOTAL_CHALLENGES:
+        cursor.execute(
+            'UPDATE users SET completed_at = NOW() WHERE id = %s AND completed_at IS NULL',
+            (user_id,)
+        )
+        newly_completed = cursor.rowcount == 1
+        conn.commit()
+        if newly_completed:
+            cursor.execute('SELECT username, email FROM users WHERE id = %s', (user_id,))
+            u = cursor.fetchone()
+            if u:
+                cert_id = f"AGIT-{user_id}{xp}A"
+                log_to_sheets('CERTIFICATE', u['username'], u['email'], cert_id)
 
     cursor.close()
     conn.close()
     return True
+
+
+def update_username(user_id, new_username):
+    """Change a learner's display name. Returns (ok, error_message)."""
+    name = (new_username or '').strip()
+    if not (3 <= len(name) <= 30):
+        return False, "Username must be between 3 and 30 characters."
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            'SELECT 1 FROM users WHERE LOWER(username) = LOWER(%s) AND id <> %s',
+            (name, user_id)
+        )
+        if cursor.fetchone():
+            return False, "That username is already taken."
+        cursor.execute('UPDATE users SET username = %s WHERE id = %s', (name, user_id))
+        conn.commit()
+        return True, None
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        return False, "That username is already taken."
+    finally:
+        cursor.close()
+        conn.close()
 
 
 # ── Google Sheets Logger ──────────────────────────────────────────────────────

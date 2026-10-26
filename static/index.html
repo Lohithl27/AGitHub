@@ -7,7 +7,7 @@
     <!-- Modern Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=1.1">
 </head>
 <body class="modern-bg">
@@ -155,7 +155,7 @@
                     <div class="card cert-card locked" id="certificate-widget">
                         <div class="cert-icon-container">🏆</div>
                         <h4>Academy Certificate</h4>
-                        <p id="cert-status-text">Complete all 7 Git challenges to unlock your graduation credentials.</p>
+                        <p id="cert-status-text">Complete all <span class="challenge-total">13</span> Git challenges to unlock your graduation credentials.</p>
                         <button class="btn btn-primary btn-block" id="btn-open-cert" disabled>CLAIM GRADUATION CERTIFICATE</button>
                     </div>
                 </div>
@@ -164,7 +164,7 @@
                 <div class="dashboard-main">
                     <div class="main-header-title">
                         <h2>Git Challenges</h2>
-                        <p>Complete the 7 essential Git challenges to master version control & GitHub workflows.</p>
+                        <p>Complete the <span class="challenge-total">13</span> essential Git challenges to master version control & GitHub workflows.</p>
                     </div>
                     
                     <div class="challenges-list" id="challenges-grid">
@@ -366,7 +366,7 @@
                         <div class="cert-body">
                             <p class="cert-text-lead">This is proudly awarded to</p>
                             <h2 class="cert-recipient-name" id="cert-name-display">STUDENT NAME</h2>
-                            <p class="cert-text-body">for successfully completing the entire Git curriculum and passing all 7 interactive version control challenges on branching, merging, and remote collaboration.</p>
+                            <p class="cert-text-body">for successfully completing the entire Git curriculum and passing all <span class="challenge-total">13</span> interactive version control challenges on branching, merging, and remote collaboration.</p>
                         </div>
                         
                         <div class="cert-footer">
@@ -383,8 +383,9 @@
                             </div>
                             
                             <div class="cert-signature-block">
+                                <span class="cert-date-value" id="cert-date-display">--</span>
                                 <span class="line"></span>
-                                <span class="label">Date Verified</span>
+                                <span class="label">Date Completed</span>
                             </div>
                         </div>
                         
